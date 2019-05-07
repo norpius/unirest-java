@@ -26,37 +26,43 @@
 package kong.unirest.apache;
 
 import kong.unirest.*;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
 
 import java.io.*;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 
 class ApacheResponse extends RawResponseBase {
-    private final HttpResponse r;
+    private final CloseableHttpResponse r;
 
-    public ApacheResponse(HttpResponse r, Config config) {
+    public ApacheResponse(CloseableHttpResponse r, Config config) {
         super(config);
         this.r = r;
     }
 
+    public ApacheResponse(SimpleHttpResponse httpResponse, Config config) {
+        super(config);
+        this.r = null;
+    }
+
     @Override
     public int getStatus() {
-        return r.getStatusLine().getStatusCode();
+        return r.getCode();
     }
 
     @Override
     public String getStatusText() {
-        return r.getStatusLine().getReasonPhrase();
+        return r.getReasonPhrase();
     }
 
     @Override
     public Headers getHeaders() {
         Headers h = new Headers();
-        Stream.of(r.getAllHeaders())
+        Stream.of(r.getHeaders())
                 .forEachOrdered(e -> h.add(e.getName(), e.getValue()));
         return h;
     }
@@ -130,9 +136,9 @@ class ApacheResponse extends RawResponseBase {
     @Override
     public String getContentType() {
         if (hasContent()) {
-            Header contentType = r.getEntity().getContentType();
+            String contentType = r.getEntity().getContentType();
             if (contentType != null) {
-                return contentType.getValue();
+                return contentType;
             }
         }
         return "";
@@ -141,9 +147,9 @@ class ApacheResponse extends RawResponseBase {
     @Override
     public String getEncoding() {
         if (hasContent()) {
-            Header contentType = r.getEntity().getContentEncoding();
+            String contentType = r.getEntity().getContentEncoding();
             if (contentType != null) {
-                return contentType.getValue();
+                return contentType;
             }
         }
         return "";

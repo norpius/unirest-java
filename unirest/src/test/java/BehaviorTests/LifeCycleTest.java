@@ -30,13 +30,13 @@ import com.google.common.collect.Sets;
 import kong.unirest.*;
 import kong.unirest.apache.AsyncIdleConnectionMonitorThread;
 import kong.unirest.apache.SyncIdleConnectionMonitorThread;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -65,7 +65,7 @@ public class LifeCycleTest extends BddTest {
     @Mock
     private AsyncIdleConnectionMonitorThread asyncMonitor;
     @Mock
-    private PoolingNHttpClientConnectionManager manager;
+    private PoolingAsyncClientConnectionManager manager;
 
     @Override
     public void setUp() {
@@ -75,12 +75,13 @@ public class LifeCycleTest extends BddTest {
 
     @Test
     public void settingACustomClient() {
-        HttpClientMock httpClientMock = new HttpClientMock();
-        httpClientMock.onGet("http://localhost/getme").doReturn(202, "Howdy Ho!");
-        Unirest.config().httpClient(httpClientMock);
-        HttpResponse<String> result =  Unirest.get("http://localhost/getme").asString();
-        assertEquals(202, result.getStatus());
-        assertEquals("Howdy Ho!", result.getBody());
+        fail();
+//        HttpClientMock httpClientMock = new HttpClientMock();
+//        httpClientMock.onGet("http://localhost/getme").doReturn(202, "Howdy Ho!");
+//        Unirest.config().httpClient(httpClientMock);
+//        HttpResponse<String> result =  Unirest.get("http://localhost/getme").asString();
+//        assertEquals(202, result.getStatus());
+//        assertEquals("Howdy Ho!", result.getBody());
     }
 
     @Test
@@ -110,7 +111,8 @@ public class LifeCycleTest extends BddTest {
         HttpClientMock httpClientMock = new HttpClientMock();
         httpClientMock.onGet("http://localhost/getme").doReturn(202, "Howdy Ho!");
         assertEquals(200, Unirest.get(MockServer.GET).asString().getStatus());
-        Unirest.config().httpClient(httpClientMock);
+        //Unirest.config().httpClient(httpClientMock);
+        fail();
         HttpResponse<String> result =  Unirest.get("http://localhost/getme").asString();
         assertEquals(202, result.getStatus());
         assertEquals("Howdy Ho!", result.getBody());
@@ -119,8 +121,8 @@ public class LifeCycleTest extends BddTest {
     @Test
     public void willNotShutdownInactiveAsyncClient() throws IOException {
         CloseableHttpAsyncClient asyncClient = mock(CloseableHttpAsyncClient.class);
-        when(asyncClient.isRunning()).thenReturn(false);
-
+       // when(asyncClient.isRunning()).thenReturn(false);
+        fail();
         Unirest.config().asyncClient(asyncClient);
 
         Unirest.shutDown();

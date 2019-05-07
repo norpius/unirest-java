@@ -25,11 +25,11 @@
 
 package kong.unirest.apache;
 
-import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 
 import java.net.URI;
 
-class ApacheDeleteWithBody extends HttpEntityEnclosingRequestBase {
+class ApacheDeleteWithBody extends HttpUriRequestBase {
 	private static final String METHOD_NAME = "DELETE";
 
 	public String getMethod() {
@@ -37,7 +37,6 @@ class ApacheDeleteWithBody extends HttpEntityEnclosingRequestBase {
 	}
 
 	ApacheDeleteWithBody(final String uri) {
-		super();
-		setURI(URI.create(uri));
+		super(METHOD_NAME, URI.create(uri));
 	}
 }

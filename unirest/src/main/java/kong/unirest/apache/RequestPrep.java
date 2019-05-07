@@ -26,12 +26,13 @@
 package kong.unirest.apache;
 
 import kong.unirest.*;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.*;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.nio.entity.NByteArrayEntity;
+import org.apache.hc.client5.http.classic.methods.*;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
+import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
+import org.apache.hc.core5.http.message.BasicHeader;
+import org.apache.hc.core5.util.Timeout;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -44,7 +45,7 @@ class RequestPrep {
     private static final String ACCEPT_ENCODING_HEADER = "accept-encoding";
     private static final String USER_AGENT_HEADER = "user-agent";
     private static final String USER_AGENT = "unirest-java/3.0.00";
-    private static final Map<HttpMethod, Function<String, HttpRequestBase>> FACTORIES;
+    private static final Map<HttpMethod, Function<String, BasicClassicHttpRequest>> FACTORIES;
     private final HttpRequest request;
     private Config config;
     private final boolean async;
@@ -66,15 +67,15 @@ class RequestPrep {
         this.async = async;
     }
 
-    HttpRequestBase prepare() {
-        HttpRequestBase reqObj = getHttpRequestBase();
+    BasicClassicHttpRequest prepare() {
+        BasicClassicHttpRequest reqObj = getHttpRequestBase();
 
         setBody(reqObj);
 
         return reqObj;
     }
 
-    private HttpRequestBase getHttpRequestBase() {
+    private BasicClassicHttpRequest getHttpRequestBase() {
         if (!request.getHeaders().containsKey(USER_AGENT_HEADER)) {
             request.header(USER_AGENT_HEADER, USER_AGENT);
         }
@@ -84,9 +85,9 @@ class RequestPrep {
 
         try {
             String url = request.getUrl();
-            HttpRequestBase reqObj = FACTORIES.computeIfAbsent(request.getHttpMethod(), this::register).apply(url);
+            BasicClassicHttpRequest reqObj = FACTORIES.computeIfAbsent(request.getHttpMethod(), this::register).apply(url);
             request.getHeaders().all().stream().map(this::toEntries).forEach(reqObj::addHeader);
-            reqObj.setConfig(overrideConfig());
+            //reqObj.setConfig(overrideConfig());
             return reqObj;
         } catch (RuntimeException e) {
             throw new UnirestException(e);
@@ -95,41 +96,41 @@ class RequestPrep {
 
     private RequestConfig overrideConfig() {
         return RequestConfig.custom()
-                .setConnectTimeout(request.getConnectTimeout())
-                .setSocketTimeout(request.getSocketTimeout())
-                .setNormalizeUri(false)
-                .setConnectionRequestTimeout(request.getSocketTimeout())
+                .setConnectTimeout(Timeout.ofMilliseconds(request.getConnectTimeout()))
+                //.setSocketTimeout(request.getSocketTimeout())
+                //.setNormalizeUri(false)
+                .setConnectionRequestTimeout(Timeout.ofMilliseconds(request.getSocketTimeout()))
                 .setProxy(RequestOptions.toApacheProxy(request.getProxy()))
                 .setCookieSpec(config.getCookieSpec())
                 .build();
     }
 
-    private Function<String, HttpRequestBase> register(HttpMethod method) {
+    private Function<String, BasicClassicHttpRequest> register(HttpMethod method) {
         return u -> new ApacheRequestWithBody(method, u);
     }
 
-    private Header toEntries(kong.unirest.Header k) {
+    private BasicHeader toEntries(kong.unirest.Header k) {
         return new BasicHeader(k.getName(), k.getValue());
     }
 
-    private void setBody(HttpRequestBase reqObj) {
+    private void setBody(BasicClassicHttpRequest reqObj) {
         if (request.getBody().isPresent()) {
             ApacheBodyMapper mapper = new ApacheBodyMapper(request);
             HttpEntity entity = mapper.apply();
             if (async) {
                 if (reqObj.getHeaders(CONTENT_TYPE) == null || reqObj.getHeaders(CONTENT_TYPE).length == 0) {
-                    reqObj.setHeader(entity.getContentType());
+                    reqObj.setHeader(CONTENT_TYPE, entity.getContentType());
                 }
                 try {
                     ByteArrayOutputStream output = new ByteArrayOutputStream();
                     entity.writeTo(output);
-                    NByteArrayEntity en = new NByteArrayEntity(output.toByteArray());
-                    ((HttpEntityEnclosingRequestBase) reqObj).setEntity(en);
+                    ByteArrayEntity en = new ByteArrayEntity(output.toByteArray(), org.apache.hc.core5.http.ContentType.create(entity.getContentType()));
+                    reqObj.setEntity(en);
                 } catch (IOException e) {
                     throw new UnirestException(e);
                 }
             } else {
-                ((HttpEntityEnclosingRequestBase) reqObj).setEntity(entity);
+                reqObj.setEntity(entity);
             }
         }
     }

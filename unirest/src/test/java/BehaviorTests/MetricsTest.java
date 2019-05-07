@@ -132,7 +132,7 @@ public class MetricsTest extends BddTest {
         HttpClient mock = mock(HttpClient.class);
         when(mock.execute(any(HttpRequestBase.class))).thenThrow(new RuntimeException("boo"));
         MyMetric metric = new MyMetric(HttpRequestSummary::getUrl);
-        Unirest.config().reset().httpClient(mock).instrumentWith(metric);
+        //Unirest.config().reset().httpClient(mock).instrumentWith(metric);
 
         try {
             Unirest.get(GET).asEmpty();

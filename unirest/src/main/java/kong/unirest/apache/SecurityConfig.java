@@ -27,17 +27,17 @@ package kong.unirest.apache;
 
 import kong.unirest.Config;
 import kong.unirest.UnirestConfigException;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustStrategy;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.ssl.SSLContextBuilder;
-import org.apache.http.ssl.SSLContexts;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.socket.ConnectionSocketFactory;
+import org.apache.hc.client5.http.socket.PlainConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.core5.http.config.Registry;
+import org.apache.hc.core5.http.config.RegistryBuilder;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.apache.hc.core5.ssl.TrustStrategy;
 
 import javax.net.ssl.SSLContext;
 import java.security.KeyManagementException;
@@ -117,8 +117,8 @@ class SecurityConfig {
 
     public void configureSecurity(HttpClientBuilder cb) {
         if(config.getKeystore() != null){
-            cb.setSSLContext(createSslContext());
-            cb.setSSLSocketFactory(getSocketFactory());
+//            cb.setSSLContext(createSslContext());
+//            cb.setSSLSocketFactory(getSocketFactory());
         }
         if (!config.isVerifySsl()) {
             disableSsl(cb);
@@ -127,8 +127,8 @@ class SecurityConfig {
 
     private void disableSsl(HttpClientBuilder cb) {
         try {
-            cb.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-            cb.setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (TrustStrategy) (arg0, arg1) -> true).build());
+//            cb.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
+//            cb.setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (arg0, arg1) -> true).build());
         } catch (Exception e) {
             throw new UnirestConfigException(e);
         }

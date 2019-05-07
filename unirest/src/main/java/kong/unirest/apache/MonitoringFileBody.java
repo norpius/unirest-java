@@ -26,8 +26,7 @@
 package kong.unirest.apache;
 
 import kong.unirest.ProgressMonitor;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.content.FileBody;
+import org.apache.hc.client5.http.entity.mime.FileBody;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,7 +39,7 @@ public class MonitoringFileBody extends FileBody {
     private long length;
     private String name;
 
-    public MonitoringFileBody(String field, File file, ContentType contentType, ProgressMonitor monitor) {
+    public MonitoringFileBody(String field, File file, org.apache.hc.core5.http.ContentType contentType, ProgressMonitor monitor) {
         super(file, contentType);
         this.field = field;
         this.monitor = monitor;

@@ -26,16 +26,16 @@
 package kong.unirest.apache;
 
 import kong.unirest.HttpMethod;
-import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 
 import java.net.URI;
 
-class ApacheRequestWithBody extends HttpEntityEnclosingRequestBase {
+class ApacheRequestWithBody extends HttpUriRequestBase {
     private HttpMethod method;
 
     public ApacheRequestWithBody(HttpMethod method, String uri){
+        super(method.name(), URI.create(uri));
         this.method = method;
-        setURI(URI.create(uri));
     }
     @Override
     public String getMethod() {

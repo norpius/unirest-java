@@ -27,9 +27,10 @@ package kong.unirest;
 
 import kong.unirest.apache.ApacheAsyncClient;
 import kong.unirest.apache.ApacheClient;
-import org.apache.http.HttpRequestInterceptor;
-import org.apache.http.client.HttpClient;
-import org.apache.http.nio.client.HttpAsyncClient;
+import org.apache.hc.client5.http.async.HttpAsyncClient;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.core5.http.HttpRequestInterceptor;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -111,7 +112,7 @@ public class Config {
      * @param httpClient Custom httpClient implementation
      * @return this config object
      */
-    public Config httpClient(HttpClient httpClient) {
+    public Config httpClient(CloseableHttpClient httpClient) {
         client = Optional.of(new ApacheClient(httpClient, this, null, null));
         return this;
     }
@@ -144,7 +145,7 @@ public class Config {
      * @param value Custom CloseableHttpAsyncClient implementation
      * @return this config object
      */
-    public Config asyncClient(HttpAsyncClient value) {
+    public Config asyncClient(CloseableHttpAsyncClient value) {
         this.asyncClient = Optional.of(new ApacheAsyncClient(value, this, null, null));
         return this;
     }

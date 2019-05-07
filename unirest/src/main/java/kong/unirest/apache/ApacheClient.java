@@ -26,12 +26,13 @@
 package kong.unirest.apache;
 
 import kong.unirest.*;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
 
 import java.io.Closeable;
 import java.util.Optional;
@@ -39,7 +40,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class ApacheClient extends BaseApacheClient implements Client {
-    private final HttpClient client;
+    private final CloseableHttpClient client;
     private final Config config;
     private final PoolingHttpClientConnectionManager manager;
     private final SyncIdleConnectionMonitorThread syncMonitor;
@@ -81,7 +82,7 @@ public class ApacheClient extends BaseApacheClient implements Client {
         if (!config.getEnabledCookieManagement()) {
             cb.disableCookieManagement();
         }
-        config.getInterceptors().stream().forEach(cb::addInterceptorFirst);
+        //config.getInterceptors().stream().forEach(cb::addInterceptorFirst);
         if (config.shouldAddShutdownHook()) {
             registerShutdownHook();
         }
@@ -95,7 +96,7 @@ public class ApacheClient extends BaseApacheClient implements Client {
         }
     }
 
-    public ApacheClient(HttpClient httpClient, Config config, PoolingHttpClientConnectionManager clientManager, SyncIdleConnectionMonitorThread connMonitor) {
+    public ApacheClient(CloseableHttpClient httpClient, Config config, PoolingHttpClientConnectionManager clientManager, SyncIdleConnectionMonitorThread connMonitor) {
         this.client = httpClient;
         this.security = new SecurityConfig(config);
         this.config = config;
@@ -107,20 +108,18 @@ public class ApacheClient extends BaseApacheClient implements Client {
     @Override
     public <T> HttpResponse<T> request(HttpRequest request, Function<RawResponse, HttpResponse<T>> transformer) {
 
-        HttpRequestBase requestObj = new RequestPrep(request, config, false).prepare();
+        BasicClassicHttpRequest requestObj = new RequestPrep(request, config, false).prepare();
         MetricContext metric = config.getMetric().begin(request.toSummary());
         try {
-            org.apache.http.HttpResponse execute = client.execute(requestObj);
+            CloseableHttpResponse execute = client.execute(requestObj);
             ApacheResponse t = new ApacheResponse(execute, config);
             metric.complete(t.toSummary(), null);
             HttpResponse<T> httpResponse = transformBody(transformer, t);
-            requestObj.releaseConnection();
+            execute.close();
             return httpResponse;
         } catch (Exception e) {
             metric.complete(null, e);
             throw new UnirestException(e);
-        } finally {
-            requestObj.releaseConnection();
         }
     }
 

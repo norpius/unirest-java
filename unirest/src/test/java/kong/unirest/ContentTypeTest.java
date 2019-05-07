@@ -39,8 +39,9 @@ public class ContentTypeTest {
 
     @Test
     public void imageTypes() {
-        verifySame(org.apache.http.entity.ContentType.IMAGE_GIF,
-                ContentType.IMAGE_GIF);
+        fail();
+//        verifySame(org.apache.http.entity.ContentType.IMAGE_GIF,
+//                ContentType.IMAGE_GIF);
     }
 
     @Test

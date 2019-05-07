@@ -120,8 +120,8 @@ public class CertificateTests extends BddTest {
                         .setSSLSocketFactory(sslSocketFactory)
                         .setConnectionManager(cm)
                         .build();
-
-        Unirest.config().httpClient(httpClient);
+        Assert.fail();
+       // Unirest.config().httpClient(httpClient);
 
         Unirest.get("https://client.badssl.com/")
                 .asString()

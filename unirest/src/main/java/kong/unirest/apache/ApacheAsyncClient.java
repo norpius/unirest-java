@@ -26,21 +26,18 @@
 package kong.unirest.apache;
 
 import kong.unirest.*;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.concurrent.FutureCallback;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.TrustStrategy;
-import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
-import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
-import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
-import org.apache.http.nio.client.HttpAsyncClient;
-import org.apache.http.nio.conn.NoopIOSessionStrategy;
-import org.apache.http.nio.conn.SchemeIOSessionStrategy;
-import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.hc.client5.http.async.HttpAsyncClient;
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
+import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
+import org.apache.hc.client5.http.nio.AsyncClientConnectionManager;
+import org.apache.hc.core5.concurrent.FutureCallback;
+import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
+import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
+import org.apache.hc.core5.reactor.DefaultConnectingIOReactor;
+import org.apache.hc.core5.reactor.IOReactorStatus;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -50,9 +47,9 @@ import java.util.stream.Stream;
 
 public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
 
-    private final HttpAsyncClient client;
+    private final CloseableHttpAsyncClient client;
     private final AsyncIdleConnectionMonitorThread syncMonitor;
-    private final PoolingNHttpClientConnectionManager manager;
+    private final PoolingAsyncClientConnectionManager manager;
     private Config config;
     private boolean hookset;
 
@@ -105,36 +102,37 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
         if (!config.getEnabledCookieManagement()) {
             ab.disableCookieManagement();
         }
-        config.getInterceptors().forEach(ab::addInterceptorFirst);
+        //config.getInterceptors().forEach(ab::addInterceptorFirst);
     }
 
-    private PoolingNHttpClientConnectionManager createConnectionManager() throws Exception {
+    private PoolingAsyncClientConnectionManager createConnectionManager() throws Exception {
         if(config.isVerifySsl()) {
-            return new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor());
+            return new PoolingAsyncClientConnectionManager();
         }
-        Registry<SchemeIOSessionStrategy> registry = RegistryBuilder.<SchemeIOSessionStrategy>create()
-                .register("http", NoopIOSessionStrategy.INSTANCE)
-                .register("https", new SSLIOSessionStrategy(new SSLContextBuilder()
-                        .loadTrustMaterial(null, (x509Certificates, s) -> true)
-                        .build(), NoopHostnameVerifier.INSTANCE))
-                .build();
+//        Registry<SchemeIOSessionStrategy> registry = RegistryBuilder.<SchemeIOSessionStrategy>create()
+//                .register("http", NoopIOSessionStrategy.INSTANCE)
+//                .register("https", new SSLIOSessionStrategy(new SSLContextBuilder()
+//                        .loadTrustMaterial(null, (x509Certificates, s) -> true)
+//                        .build(), NoopHostnameVerifier.INSTANCE))
+//                .build();
 
-        return new PoolingNHttpClientConnectionManager(new DefaultConnectingIOReactor(), registry);
+       // return new PoolingAsyncClientConnectionManager(new DefaultConnectingIOReactor(), registry);
+        return null;
     }
 
     private void disableSsl(HttpAsyncClientBuilder ab) {
         try {
-            ab.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-            ab.setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (TrustStrategy) (arg0, arg1) -> true).build());
+//            ab.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
+//            ab.setSSLContext(new SSLContextBuilder().loadTrustMaterial(null, (arg0, arg1) -> true).build());
         }catch (Exception e){
             throw new UnirestConfigException(e);
         }
     }
 
-    public ApacheAsyncClient(HttpAsyncClient client,
-                      Config config,
-                      PoolingNHttpClientConnectionManager manager,
-                      AsyncIdleConnectionMonitorThread monitor) {
+    public ApacheAsyncClient(CloseableHttpAsyncClient client,
+                             Config config,
+                             PoolingAsyncClientConnectionManager manager,
+                             AsyncIdleConnectionMonitorThread monitor) {
         Objects.requireNonNull(client, "Client may not be null");
         this.config = config;
         this.client = client;
@@ -150,11 +148,11 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
 
         Objects.requireNonNull(callback);
 
-        HttpUriRequest requestObj = new RequestPrep(request, config, true).prepare();
+        SimpleHttpRequest requestObj = null; //new RequestPrep(request, config, true).prepare();
         MetricContext metric = config.getMetric().begin(request.toSummary());
-        client.execute(requestObj, new FutureCallback<org.apache.http.HttpResponse>() {
+        client.execute(requestObj, new FutureCallback<SimpleHttpResponse>() {
                     @Override
-                    public void completed(org.apache.http.HttpResponse httpResponse) {
+                    public void completed(SimpleHttpResponse httpResponse) {
                         ApacheResponse t = new ApacheResponse(httpResponse, config);
                         metric.complete(t.toSummary(), null);
                         callback.complete(transformBody(transformer, t));
@@ -179,7 +177,7 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
     @Override
     public boolean isRunning() {
         return Util.tryCast(client, CloseableHttpAsyncClient.class)
-                .map(CloseableHttpAsyncClient::isRunning)
+                .map(c -> c.getStatus().equals(IOReactorStatus.ACTIVE))
                 .orElse(true);
     }
 
@@ -191,11 +189,11 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
     @Override
     public Stream<Exception> close() {
         return Util.collectExceptions(Util.tryCast(client, CloseableHttpAsyncClient.class)
-                        .filter(c -> c.isRunning())
+                        .filter(c -> c.getStatus().equals(IOReactorStatus.ACTIVE))
                         .map(c -> Util.tryDo(c, d -> d.close()))
                         .filter(c -> c.isPresent())
                         .map(c -> c.get()),
-                Util.tryDo(manager, m -> m.shutdown()),
+                Util.tryDo(manager, m -> m.close()),
                 Util.tryDo(syncMonitor, m -> m.interrupt()));
     }
 
