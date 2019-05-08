@@ -102,7 +102,7 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
         if (!config.getEnabledCookieManagement()) {
             ab.disableCookieManagement();
         }
-        //config.getInterceptors().forEach(ab::addInterceptorFirst);
+        config.getInterceptors().forEach(ab::addRequestInterceptorFirst);
     }
 
     private PoolingAsyncClientConnectionManager createConnectionManager() throws Exception {

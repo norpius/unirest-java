@@ -82,7 +82,7 @@ public class ApacheClient extends BaseApacheClient implements Client {
         if (!config.getEnabledCookieManagement()) {
             cb.disableCookieManagement();
         }
-        //config.getInterceptors().stream().forEach(cb::addInterceptorFirst);
+        config.getInterceptors().stream().forEach(cb::addRequestInterceptorFirst);
         if (config.shouldAddShutdownHook()) {
             registerShutdownHook();
         }
