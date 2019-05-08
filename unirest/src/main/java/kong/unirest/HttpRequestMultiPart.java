@@ -25,7 +25,6 @@
 
 package kong.unirest;
 
-import org.apache.hc.core5.http.HttpHeaders;
 
 import java.io.File;
 import java.io.InputStream;
