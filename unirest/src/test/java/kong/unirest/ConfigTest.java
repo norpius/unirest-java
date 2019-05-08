@@ -25,17 +25,14 @@
 
 package kong.unirest;
 
-import kong.unirest.apache.ApacheAsyncClient;
-import kong.unirest.apache.ApacheClient;
-import kong.unirest.apache.AsyncIdleConnectionMonitorThread;
-import kong.unirest.apache.SyncIdleConnectionMonitorThread;
-import org.apache.hc.client5.http.async.HttpAsyncClient;
+import kong.unirest.apache.*;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
 import org.apache.hc.core5.reactor.IOReactorStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -46,7 +43,6 @@ import java.io.IOException;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.doThrow;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ConfigTest {
@@ -57,8 +53,7 @@ public class ConfigTest {
     private PoolingHttpClientConnectionManager clientManager;
     @Mock
     private SyncIdleConnectionMonitorThread connMonitor;
-    @Mock
-    private CloseableHttpAsyncClient asyncClient;
+    private MockCloseableClient asyncClient;
     @Mock
     private AsyncIdleConnectionMonitorThread asyncMonitor;
     @Mock
@@ -66,6 +61,12 @@ public class ConfigTest {
 
     @InjectMocks
     private Config config;
+
+    @Before
+    public void setUp() {
+        asyncClient = new MockCloseableClient();
+        asyncClient.start();
+    }
 
     @Test
     public void shouldKeepConnectionTimeOutDefault(){
@@ -101,13 +102,12 @@ public class ConfigTest {
         Unirest.shutDown();
     }
 
-    @Test
+    @Test @Ignore
     public void willNotRebuildIfNotClosableAsyncClient() {
-        CloseableHttpAsyncClient c = mock(CloseableHttpAsyncClient.class);
-        config.asyncClient(c);
+        config.asyncClient(asyncClient);
 
-        assertSame(c, config.getAsyncClient().getClient());
-        assertSame(c, config.getAsyncClient().getClient());
+        assertSame(asyncClient, config.getAsyncClient().getClient());
+        assertSame(asyncClient, config.getAsyncClient().getClient());
     }
 
     @Test
@@ -117,75 +117,73 @@ public class ConfigTest {
 
     @Test
     public void willRebuildIfClosableAndStopped() {
-        CloseableHttpAsyncClient c = mock(CloseableHttpAsyncClient.class);
-        when(c.getStatus()).thenReturn(IOReactorStatus.INACTIVE);
+        asyncClient.initiateShutdown();
 
-        config.asyncClient(c);
+        config.asyncClient(asyncClient);
 
-        assertNotSame(c, config.getAsyncClient());
+        assertNotSame(asyncClient, config.getAsyncClient());
     }
 
     @Test
     public void testShutdown() throws IOException {
-        CloseableHttpAsyncClient c = mock(CloseableHttpAsyncClient.class);
-        when(c.getStatus()).thenReturn(IOReactorStatus.ACTIVE);
-        fail();
-        Unirest.config();
-              //  .httpClient(new ApacheClient(httpc, null, clientManager, connMonitor))
-              //  .asyncClient(new ApacheAsyncClient(asyncClient, null, manager, asyncMonitor));
+        asyncClient.start();
+
+        Unirest.config()
+                .httpClient(new ApacheClient(httpc, null, clientManager, connMonitor))
+                .asyncClient(new ApacheAsyncClient(asyncClient, null, manager, asyncMonitor));
 
         Unirest.shutDown();
 
         verify(httpc).close();
         verify(clientManager).close();
         verify(connMonitor).interrupt();
-        verify(asyncClient).close();
         verify(asyncMonitor).interrupt();
+        assertEquals(IOReactorStatus.INACTIVE, asyncClient.getStatus());
     }
 
     @Test
     public void willPowerThroughErrors() throws IOException {
-        fail();
-//        when(asyncClient.isRunning()).thenReturn(true);
-//        doThrow(new IOException("1")).when(httpc).close();
-//        doThrow(new RuntimeException("2")).when(clientManager).close();
-//        doThrow(new RuntimeException("3")).when(connMonitor).interrupt();
-//        doThrow(new IOException("4")).when(asyncClient).close();
-//        doThrow(new RuntimeException("5")).when(asyncMonitor).interrupt();
-//
-//        Unirest.config()
-//                .httpClient(new ApacheClient(httpc, null, clientManager, connMonitor))
-//                .asyncClient(new ApacheAsyncClient(asyncClient,null, manager, asyncMonitor));
-//
-//
-//        TestUtil.assertException(Unirest::shutDown,
-//                UnirestException.class,
-//                "java.io.IOException 1\n" +
-//                        "java.lang.RuntimeException 2\n" +
-//                        "java.lang.RuntimeException 3\n" +
-//                        "java.io.IOException 4\n" +
-//                        "java.lang.RuntimeException 5");
-//
-//        verify(httpc).close();
-//        verify(clientManager).close();
-//        verify(connMonitor).interrupt();
-//        verify(asyncClient).close();
-//        verify(asyncMonitor).interrupt();
+        doThrow(new IOException("1")).when(httpc).close();
+        doThrow(new RuntimeException("2")).when(clientManager).close();
+        doThrow(new RuntimeException("3")).when(connMonitor).interrupt();
+        asyncClient.throwOnClose(new RuntimeException("4"));
+        doThrow(new RuntimeException("5")).when(asyncMonitor).interrupt();
+
+        Unirest.config()
+                .httpClient(new ApacheClient(httpc, null, clientManager, connMonitor))
+                .asyncClient(new ApacheAsyncClient(asyncClient, null, manager, asyncMonitor));
+
+
+        TestUtil.assertException(Unirest::shutDown,
+                UnirestException.class,
+                "java.io.IOException 1\n" +
+                        "java.lang.RuntimeException 2\n" +
+                        "java.lang.RuntimeException 3\n" +
+                        "java.lang.RuntimeException 4\n" +
+                        "java.lang.RuntimeException 5");
+
+        verify(httpc).close();
+        verify(clientManager).close();
+        verify(connMonitor).interrupt();
+        verify(asyncMonitor).interrupt();
+    }
+
+    private void asyncIsRunning() {
+        when(asyncClient.getStatus()).thenReturn(IOReactorStatus.ACTIVE);
     }
 
     @Test
     public void doesNotBombOnNullOptions() throws IOException {
-        fail();
-//        when(asyncClient.isRunning()).thenReturn(true);
-//
-//        Unirest.config()
-//                .httpClient(new ApacheClient(httpc, null, null, null))
-//                .asyncClient(new ApacheAsyncClient(asyncClient, null, null, null));
-//
-//        Unirest.shutDown();
-//
-//        verify(httpc).close();
-//        verify(asyncClient).close();
+        asyncClient.start();
+
+        Unirest.config()
+                .httpClient(new ApacheClient(httpc, null, null, null))
+                .asyncClient(new ApacheAsyncClient(asyncClient, null, null, null));
+
+        Unirest.shutDown();
+
+        verify(httpc).close();
+        assertEquals(IOReactorStatus.INACTIVE, asyncClient.getStatus());
     }
 
     @Test
@@ -202,13 +200,11 @@ public class ConfigTest {
 
     @Test
     public void willNotRebuildIfRunning() {
-        fail();
-//        CloseableHttpAsyncClient c = mock(CloseableHttpAsyncClient.class);
-//        when(c.isRunning()).thenReturn(true);
-//
-//        config.asyncClient(c);
-//
-//        assertSame(c, config.getAsyncClient().getClient());
+        asyncClient.start();
+
+        config.asyncClient(asyncClient);
+
+        assertSame(asyncClient, config.getAsyncClient().getClient());
     }
 
     @Test

@@ -32,6 +32,7 @@ import kong.unirest.apache.AsyncIdleConnectionMonitorThread;
 import kong.unirest.apache.SyncIdleConnectionMonitorThread;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
+import org.apache.hc.core5.reactor.IOReactorStatus;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -54,18 +55,6 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class LifeCycleTest extends BddTest {
 
-    @Mock
-    private CloseableHttpClient httpc;
-    @Mock
-    private PoolingHttpClientConnectionManager clientManager;
-    @Mock
-    private SyncIdleConnectionMonitorThread connMonitor;
-    @Mock
-    private CloseableHttpAsyncClient asyncClient;
-    @Mock
-    private AsyncIdleConnectionMonitorThread asyncMonitor;
-    @Mock
-    private PoolingAsyncClientConnectionManager manager;
 
     @Override
     public void setUp() {
@@ -119,15 +108,20 @@ public class LifeCycleTest extends BddTest {
     }
 
     @Test
+    public void closeAndReopenNewAsync() throws Exception {
+        Unirest.get(MockServer.GET).asEmptyAsync().get();
+        Unirest.shutDown(true);
+        Unirest.get(MockServer.GET).asEmptyAsync().get();
+    }
+
+    @Test
     public void willNotShutdownInactiveAsyncClient() throws IOException {
-        CloseableHttpAsyncClient asyncClient = mock(CloseableHttpAsyncClient.class);
-       // when(asyncClient.isRunning()).thenReturn(false);
         fail();
-        Unirest.config().asyncClient(asyncClient);
-
-        Unirest.shutDown();
-
-        verify(asyncClient, never()).close();
+//        Unirest.config().asyncClient(asyncClient);
+//
+//        Unirest.shutDown();
+//
+//        verify(asyncClient, never()).close();
     }
 
     @Test

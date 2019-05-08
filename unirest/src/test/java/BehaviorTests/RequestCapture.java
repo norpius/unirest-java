@@ -174,7 +174,9 @@ public class RequestCapture {
     }
 
     public RequestCapture assertParam(String key, String value) {
-        assertThat("Expected Query or Form value", params.get(key), hasItem(value));
+        List<String> actual = params.get(key);
+        assertNotNull("Expected params for key but got none: " + key, actual);
+        assertThat("Expected Query or Form value", actual, hasItem(value));
         return this;
     }
 

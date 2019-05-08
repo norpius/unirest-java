@@ -23,20 +23,31 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package kong.unirest;
+package kong.unirest.apache;
 
+import org.junit.Before;
 import org.junit.Test;
 
-import java.net.URI;
-import java.net.URISyntaxException;
+public class ApacheStartupTest {
 
-import static org.junit.Assert.assertEquals;
+    private ApacheStartup startup;
+    private MockCloseableClient mockClient;
 
-public class WtfTest {
-    @Test
-    public void name() throws URISyntaxException {
-        URI url = URI.create("http://localhost:4567/foo.csv");
-
-        assertEquals("", url.getHost());
+    @Before
+    public void setUp() {
+        startup = new ApacheStartup(500);
+        mockClient = new MockCloseableClient();
     }
+
+    @Test
+    public void returnsIfActive() {
+        mockClient.start();
+        startup.accept(mockClient);
+    }
+
+    @Test(timeout = 1000)
+    public void willGiveUpWaitingAfter5SecondsForSanity() {
+        startup.accept(mockClient);
+    }
+
 }

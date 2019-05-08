@@ -23,32 +23,35 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-package kong.unirest;
+package kong.unirest.apache;
 
-import org.junit.Test;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.core5.reactor.IOReactorStatus;
 
-import static org.junit.Assert.*;
+import java.util.function.Consumer;
 
-public class ContentTypeTest {
+class ApacheStartup implements Consumer<CloseableHttpAsyncClient> {
+    private final long timeout;
 
-    @Test
-    public void contentTypeWithEncoding() {
-        verifySame(org.apache.http.entity.ContentType.APPLICATION_ATOM_XML,
-                ContentType.APPLICATION_ATOM_XML);
+    ApacheStartup() {
+        this(5000L);
     }
 
-    @Test
-    public void wildCard() {
-        verifySame(org.apache.http.entity.ContentType.WILDCARD,
-                ContentType.WILDCARD);
+    ApacheStartup(long timeout){
+        this.timeout = timeout;
     }
 
-    private void verifySame(org.apache.http.entity.ContentType apache, ContentType unirest) {
-        assertEquals(
-                apache.toString(),
-                unirest.toString()
-        );
-        assertEquals(apache.toString(),
-                org.apache.http.entity.ContentType.parse(unirest.toString()).toString());
+    @Override
+    public void accept(CloseableHttpAsyncClient client) {
+        long now = System.currentTimeMillis();
+        while (client.getStatus() != IOReactorStatus.ACTIVE && notTimedOutYet(now)){
+
+        }
+        return;
+    }
+
+    private boolean notTimedOutYet(long start) {
+        long d = System.currentTimeMillis() - start;
+        return d < timeout;
     }
 }

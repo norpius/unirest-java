@@ -80,6 +80,7 @@ class RequestPrep {
     }
 
     SimpleHttpRequest prepareAsync() {
+        enableGZip();
         SimpleHttpRequest req = new SimpleHttpRequest(request.getHttpMethod().name(), request.getUrl());
         request.getHeaders().all().stream().map(this::toEntries).forEach(req::addHeader);
         req.setBody(getSimpleBody());
@@ -91,12 +92,7 @@ class RequestPrep {
     }
 
     private BasicClassicHttpRequest getHttpRequestBase() {
-        if (!request.getHeaders().containsKey(USER_AGENT_HEADER)) {
-            request.header(USER_AGENT_HEADER, USER_AGENT);
-        }
-        if (!request.getHeaders().containsKey(ACCEPT_ENCODING_HEADER) && config.isRequestCompressionOn()) {
-            request.header(ACCEPT_ENCODING_HEADER, "gzip");
-        }
+        enableGZip();
 
         try {
             String url = request.getUrl();
@@ -106,6 +102,15 @@ class RequestPrep {
             return reqObj;
         } catch (RuntimeException e) {
             throw new UnirestException(e);
+        }
+    }
+
+    private void enableGZip() {
+        if (!request.getHeaders().containsKey(USER_AGENT_HEADER)) {
+            request.header(USER_AGENT_HEADER, USER_AGENT);
+        }
+        if (!request.getHeaders().containsKey(ACCEPT_ENCODING_HEADER) && config.isRequestCompressionOn()) {
+            request.header(ACCEPT_ENCODING_HEADER, "gzip");
         }
     }
 

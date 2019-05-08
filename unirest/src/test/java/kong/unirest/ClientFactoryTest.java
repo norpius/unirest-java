@@ -25,12 +25,14 @@
 
 package kong.unirest;
 
-import org.apache.http.HttpRequestInterceptor;
+import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
+import org.apache.hc.core5.http.HttpRequestInterceptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.lang.management.ManagementFactory;
+import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.lessThan;
@@ -47,25 +49,24 @@ public class ClientFactoryTest {
     @Test
     public void shouldReuseThreadPool() {
         int startingCount = ManagementFactory.getThreadMXBean().getThreadCount();
-        //IntStream.range(0,100).forEach(i -> ClientFactory.refresh());
+
         assertThat(ManagementFactory.getThreadMXBean().getThreadCount(), is(lessThan(startingCount + 10)));
     }
 
     @Test
     public void canSaveSomeOptions(){
-        fail();
-//        HttpRequestInterceptor i = mock(HttpRequestInterceptor.class);
-//        CloseableHttpAsyncClient c = mock(CloseableHttpAsyncClient.class);
-//
-//        Unirest.config()
-//                .addInterceptor(i)
-//                .connectTimeout(4000)
-//                .asyncClient(c);
-//
-//        Unirest.shutDown(false);
-//
-//        assertNotEquals(c, Unirest.config().getAsyncClient());
-//        assertEquals(i, Unirest.config().getInterceptors().get(0));
-//        assertEquals(4000, Unirest.config().getConnectionTimeout());
+        HttpRequestInterceptor i = mock(HttpRequestInterceptor.class);
+        CloseableHttpAsyncClient c = mock(CloseableHttpAsyncClient.class);
+
+        Unirest.config()
+                .addInterceptor(i)
+                .connectTimeout(4000)
+                .asyncClient(c);
+
+        Unirest.shutDown(false);
+
+        assertNotEquals(c, Unirest.config().getAsyncClient());
+        assertEquals(i, Unirest.config().getInterceptors().get(0));
+        assertEquals(4000, Unirest.config().getConnectionTimeout());
     }
 }

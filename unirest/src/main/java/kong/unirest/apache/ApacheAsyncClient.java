@@ -40,9 +40,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static org.apache.hc.core5.io.CloseMode.GRACEFUL;
+
 
 public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
 
+    private final ApacheStartup startupLatch = new ApacheStartup();
     private final CloseableHttpAsyncClient client;
     private final AsyncIdleConnectionMonitorThread syncMonitor;
     private final PoolingAsyncClientConnectionManager manager;
@@ -66,6 +69,7 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
 
             CloseableHttpAsyncClient build = ab.build();
             build.start();
+            startupLatch.accept(build);
             syncMonitor = new AsyncIdleConnectionMonitorThread(manager);
             syncMonitor.tryStart();
             client = build;
@@ -152,7 +156,7 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
                         ApacheAsyncResponse t = new ApacheAsyncResponse(httpResponse, config);
                         metric.complete(t.toSummary(), null);
                         callback.complete(transformBody(transformer, t));
-                    }
+                     }
 
                     @Override
                     public void failed(Exception e) {
@@ -173,7 +177,7 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
     @Override
     public boolean isRunning() {
         return Util.tryCast(client, CloseableHttpAsyncClient.class)
-                .map(c -> c.getStatus().equals(IOReactorStatus.ACTIVE))
+                .map(c -> isActive(c))
                 .orElse(true);
     }
 
@@ -185,12 +189,16 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
     @Override
     public Stream<Exception> close() {
         return Util.collectExceptions(Util.tryCast(client, CloseableHttpAsyncClient.class)
-                        .filter(c -> c.getStatus().equals(IOReactorStatus.ACTIVE))
-                        .map(c -> Util.tryDo(c, d -> d.close()))
+                        //.filter(c -> isActive(c))
+                        .map(c -> Util.tryDo(c, d -> d.shutdown(GRACEFUL)))
                         .filter(c -> c.isPresent())
                         .map(c -> c.get()),
                 Util.tryDo(manager, m -> m.close()),
                 Util.tryDo(syncMonitor, m -> m.interrupt()));
+    }
+
+    private boolean isActive(CloseableHttpAsyncClient c) {
+        return c.getStatus() == IOReactorStatus.ACTIVE;
     }
 
 
