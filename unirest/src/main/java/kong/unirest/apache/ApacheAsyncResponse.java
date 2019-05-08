@@ -28,11 +28,10 @@ package kong.unirest.apache;
 import kong.unirest.*;
 import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.util.Optional;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 
 class ApacheAsyncResponse extends RawResponseBase {
 
@@ -68,19 +67,34 @@ class ApacheAsyncResponse extends RawResponseBase {
 
     @Override
     public byte[] getContentAsBytes() {
-        return r.getBodyBytes();
+        return getUnzipped();
     }
 
     @Override
     public String getContentAsString() {
-        return r.getBodyText();
+        return new String(getUnzipped());
+    }
+
+    private byte[] getUnzipped(){
+        if (!hasContent()) {
+            return new byte[0];
+        }
+        try {
+            InputStream is = getContent();
+            if (isGzipped(getEncoding())) {
+                is = new GZIPInputStream(getContent());
+            }
+            return getBytes(is);
+        } catch (IOException e2) {
+            throw new UnirestException(e2);
+        }
     }
 
     @Override
     public String getContentAsString(String charset) {
         try {
             if(charset == null){
-                return r.getBodyText();
+                return getContentAsString();
             }
             return new String(r.getBodyBytes(), charset);
         } catch (UnsupportedEncodingException e) {
@@ -105,6 +119,8 @@ class ApacheAsyncResponse extends RawResponseBase {
 
     @Override
     public String getEncoding() {
-        return r.getContentType().getCharset().name();
+        return Optional.ofNullable(r.getFirstHeader("Content-Encoding"))
+                .map(h -> h.getValue())
+                .orElse("");
     }
 }
