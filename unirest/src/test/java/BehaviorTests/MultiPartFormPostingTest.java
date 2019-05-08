@@ -127,7 +127,8 @@ public class MultiPartFormPostingTest extends BddTest {
         Unirest.post(MockServer.POST)
                 .field("name", "Mark")
                 .field("file", new FileInputStream(rezFile("/test")), ContentType.APPLICATION_OCTET_STREAM, "test")
-                .asJsonAsync(new MockCallback<>(this, r -> parse(r)
+                .asJsonAsync(new MockCallback<>(this, r ->
+                        parse(r)
                         .assertParam("name", "Mark")
                         .assertMultiPartContentType()
                         .getFile("test")

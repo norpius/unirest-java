@@ -83,7 +83,8 @@ class RequestPrep {
         enableGZip();
         SimpleHttpRequest req = new SimpleHttpRequest(request.getHttpMethod().name(), request.getUrl());
         request.getHeaders().all().stream().map(this::toEntries).forEach(req::addHeader);
-        req.setBody(getSimpleBody());
+        //req.setBody(getSimpleBody());
+        setBody(req);
         return req;
     }
 
@@ -144,7 +145,7 @@ class RequestPrep {
             try {
                 ByteArrayOutputStream output = new ByteArrayOutputStream();
                 entity.writeTo(output);
-                org.apache.hc.core5.http.ContentType contentType = org.apache.hc.core5.http.ContentType.create(entity.getContentType());
+                org.apache.hc.core5.http.ContentType contentType = org.apache.hc.core5.http.ContentType.parse(entity.getContentType());
                 byte[] bytes = output.toByteArray();
                 reqObj.setBodyBytes(bytes, contentType);
             } catch (IOException e) {
