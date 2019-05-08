@@ -1,8 +1,8 @@
 /**
  * The MIT License
- *
+ * <p>
  * Copyright for portions of unirest-java are held by Kong Inc (c) 2013.
- *
+ * <p>
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
  * "Software"), to deal in the Software without restriction, including
@@ -10,10 +10,10 @@
  * distribute, sublicense, and/or sell copies of the Software, and to
  * permit persons to whom the Software is furnished to do so, subject to
  * the following conditions:
- *
+ * <p>
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
- *
+ * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -26,12 +26,16 @@
 package kong.unirest.apache;
 
 import kong.unirest.*;
+import org.apache.hc.client5.http.async.methods.SimpleBody;
+import org.apache.hc.client5.http.async.methods.SimpleHttpRequest;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
 import org.apache.hc.core5.http.message.BasicHeader;
+import org.apache.hc.core5.http.nio.AsyncRequestProducer;
+import org.apache.hc.core5.http.nio.BasicRequestProducer;
 import org.apache.hc.core5.util.Timeout;
 
 import java.io.ByteArrayOutputStream;
@@ -75,6 +79,17 @@ class RequestPrep {
         return reqObj;
     }
 
+    SimpleHttpRequest prepareAsync() {
+        SimpleHttpRequest req = new SimpleHttpRequest(request.getHttpMethod().name(), request.getUrl());
+        request.getHeaders().all().stream().map(this::toEntries).forEach(req::addHeader);
+        req.setBody(getSimpleBody());
+        return req;
+    }
+
+    private SimpleBody getSimpleBody() {
+        return null;
+    }
+
     private BasicClassicHttpRequest getHttpRequestBase() {
         if (!request.getHeaders().containsKey(USER_AGENT_HEADER)) {
             request.header(USER_AGENT_HEADER, USER_AGENT);
@@ -113,25 +128,31 @@ class RequestPrep {
         return new BasicHeader(k.getName(), k.getValue());
     }
 
+    private void setBody(SimpleHttpRequest reqObj) {
+        if (request.getBody().isPresent()) {
+            ApacheBodyMapper mapper = new ApacheBodyMapper(request);
+            HttpEntity entity = mapper.apply();
+
+            if (reqObj.getHeaders(CONTENT_TYPE) == null || reqObj.getHeaders(CONTENT_TYPE).length == 0) {
+                reqObj.setHeader(CONTENT_TYPE, entity.getContentType());
+            }
+            try {
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                entity.writeTo(output);
+                org.apache.hc.core5.http.ContentType contentType = org.apache.hc.core5.http.ContentType.create(entity.getContentType());
+                byte[] bytes = output.toByteArray();
+                reqObj.setBodyBytes(bytes, contentType);
+            } catch (IOException e) {
+                throw new UnirestException(e);
+            }
+        }
+    }
+
     private void setBody(BasicClassicHttpRequest reqObj) {
         if (request.getBody().isPresent()) {
             ApacheBodyMapper mapper = new ApacheBodyMapper(request);
             HttpEntity entity = mapper.apply();
-            if (async) {
-                if (reqObj.getHeaders(CONTENT_TYPE) == null || reqObj.getHeaders(CONTENT_TYPE).length == 0) {
-                    reqObj.setHeader(CONTENT_TYPE, entity.getContentType());
-                }
-                try {
-                    ByteArrayOutputStream output = new ByteArrayOutputStream();
-                    entity.writeTo(output);
-                    ByteArrayEntity en = new ByteArrayEntity(output.toByteArray(), org.apache.hc.core5.http.ContentType.create(entity.getContentType()));
-                    reqObj.setEntity(en);
-                } catch (IOException e) {
-                    throw new UnirestException(e);
-                }
-            } else {
-                reqObj.setEntity(entity);
-            }
+            reqObj.setEntity(entity);
         }
     }
 }

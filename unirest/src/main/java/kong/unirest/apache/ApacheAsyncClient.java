@@ -32,11 +32,7 @@ import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
 import org.apache.hc.client5.http.impl.async.CloseableHttpAsyncClient;
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManager;
-import org.apache.hc.client5.http.nio.AsyncClientConnectionManager;
 import org.apache.hc.core5.concurrent.FutureCallback;
-import org.apache.hc.core5.http.message.BasicClassicHttpRequest;
-import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
-import org.apache.hc.core5.reactor.DefaultConnectingIOReactor;
 import org.apache.hc.core5.reactor.IOReactorStatus;
 
 import java.util.Objects;
@@ -148,12 +144,12 @@ public class ApacheAsyncClient extends BaseApacheClient implements AsyncClient {
 
         Objects.requireNonNull(callback);
 
-        SimpleHttpRequest requestObj = null; //new RequestPrep(request, config, true).prepare();
+        SimpleHttpRequest requestObj = new RequestPrep(request, config, true).prepareAsync();
         MetricContext metric = config.getMetric().begin(request.toSummary());
         client.execute(requestObj, new FutureCallback<SimpleHttpResponse>() {
                     @Override
                     public void completed(SimpleHttpResponse httpResponse) {
-                        ApacheResponse t = new ApacheResponse(httpResponse, config);
+                        ApacheAsyncResponse t = new ApacheAsyncResponse(httpResponse, config);
                         metric.complete(t.toSummary(), null);
                         callback.complete(transformBody(transformer, t));
                     }

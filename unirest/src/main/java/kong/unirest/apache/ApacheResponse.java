@@ -25,12 +25,13 @@
 
 package kong.unirest.apache;
 
-import kong.unirest.*;
-import org.apache.hc.client5.http.async.methods.SimpleHttpResponse;
+import kong.unirest.Config;
+import kong.unirest.Headers;
+import kong.unirest.RawResponseBase;
+import kong.unirest.UnirestException;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
 
 import java.io.*;
 import java.util.stream.Stream;
@@ -42,11 +43,6 @@ class ApacheResponse extends RawResponseBase {
     public ApacheResponse(CloseableHttpResponse r, Config config) {
         super(config);
         this.r = r;
-    }
-
-    public ApacheResponse(SimpleHttpResponse httpResponse, Config config) {
-        super(config);
-        this.r = null;
     }
 
     @Override
