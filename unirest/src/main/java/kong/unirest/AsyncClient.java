@@ -52,6 +52,7 @@ public interface AsyncClient {
      * @return a stream of exceptions possibly thrown while closing all the things.
      */
     default Stream<Exception> close() {
+        System.out.println("ciao");
         return Stream.empty();
     }
 
